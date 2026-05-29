@@ -1,0 +1,9 @@
+{
+  "name": "flip-baseball",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A browser-based card baseball game prototype.",
+  "scripts": {
+    "build": "rm -rf dist && mkdir -p dist && cp -R index.html src dist/"
+  }
+}

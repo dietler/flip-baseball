@@ -11,3 +11,8 @@ python3 -m http.server 4173
 ```
 
 Then visit <http://localhost:4173>.
+
+## Deploy to Vercel
+
+This is a static HTML/CSS/JavaScript site. The included `vercel.json` forces Vercel to use the generic “Other” framework preset, run `npm run build`, and publish the generated `dist/` directory instead of trying to detect a Python entrypoint.
+
