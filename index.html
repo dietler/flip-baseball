@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flip Baseball</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="teamSelect" class="team-select" aria-labelledby="selectTitle">
+        <div class="hero-copy">
+          <p class="eyebrow">Card-flipping tabletop baseball</p>
+          <h1 id="selectTitle">Flip Baseball League</h1>
+          <p>
+            Pick two clubs, flip cards from the play deck, and watch runners race around a
+            lively ballpark through all nine innings.
+          </p>
+        </div>
+        <div class="matchup-panel">
+          <label for="awayTeam">Away team</label>
+          <select id="awayTeam"></select>
+          <label for="homeTeam">Home team</label>
+          <select id="homeTeam"></select>
+          <button id="startGame" class="primary-button">Play Ball!</button>
+        </div>
+        <div id="teamGrid" class="team-grid" aria-label="Available teams"></div>
+      </section>
+
+      <section id="gameScreen" class="game-screen hidden" aria-label="Flip Baseball game">
+        <header class="game-header">
+          <button id="newGame" class="ghost-button">New Matchup</button>
+          <div class="inning-pill">
+            <span id="halfInning">Top</span>
+            <strong id="inningNumber">1</strong>
+          </div>
+          <div class="current-batter">
+            <span>At bat</span>
+            <strong id="batterName">—</strong>
+            <small id="batterMeta">—</small>
+          </div>
+        </header>
+
+        <section class="scoreboard" aria-label="Scoreboard">
+          <table>
+            <thead>
+              <tr id="inningHeader"></tr>
+            </thead>
+            <tbody id="scoreRows"></tbody>
+          </table>
+          <div class="game-totals">
+            <div><span>Outs</span><strong id="outsCount">0</strong></div>
+            <div><span>Bases</span><strong id="baseState">Empty</strong></div>
+            <div><span>Deck</span><strong id="deckCount">0</strong></div>
+          </div>
+        </section>
+
+        <section class="ballpark-card">
+          <div class="field" aria-label="Animated baseball diamond">
+            <div class="grass-stripe stripe-one"></div>
+            <div class="grass-stripe stripe-two"></div>
+            <div class="outfield-wall">FLIP BASEBALL PARK</div>
+            <div class="foul-line left-line"></div>
+            <div class="foul-line right-line"></div>
+            <div class="infield-dirt"></div>
+            <div class="diamond-path"></div>
+            <div class="base home" data-base="home">H</div>
+            <div class="base first" data-base="first">1B</div>
+            <div class="base second" data-base="second">2B</div>
+            <div class="base third" data-base="third">3B</div>
+            <div id="runnerLayer" class="runner-layer"></div>
+            <div id="ball" class="ball hidden" aria-hidden="true"></div>
+            <div class="dugout away-dugout" id="awayDugout"></div>
+            <div class="dugout home-dugout" id="homeDugout"></div>
+          </div>
+        </section>
+
+        <aside class="play-panel">
+          <div class="deck-card" aria-live="polite">
+            <span class="deck-label">Last card</span>
+            <strong id="lastCard">Flip to begin</strong>
+            <p id="cardDescription">The batter is waiting for the pitch.</p>
+          </div>
+          <button id="flipCard" class="primary-button flip-button">Flip Card</button>
+          <div id="playLog" class="play-log" aria-live="polite"></div>
+        </aside>
+      </section>
+    </main>
+    <script src="src/game.js"></script>
+  </body>
+</html>
