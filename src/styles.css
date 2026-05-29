@@ -443,11 +443,104 @@ select option {
 .second { left: 50%; top: 40%; }
 .third { left: 29%; top: 61%; }
 
+.fielder-layer,
+.batter-box,
 .runner-layer,
 .ball {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+
+.fielder,
+.batter {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 56px;
+  transform: translate(-50%, -50%);
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.batter {
+  left: 44%;
+  top: 82%;
+  z-index: 8;
+}
+
+.player-body {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 44% 44%;
+  color: #fff;
+  background: var(--player-color, var(--orange));
+  font-size: 0.72rem;
+  font-weight: 950;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32);
+}
+
+.player-body::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  width: 18px;
+  height: 11px;
+  border-radius: 999px 999px 4px 4px;
+  background: #fff;
+  box-shadow: inset 0 -3px 0 var(--player-color, var(--orange));
+}
+
+.position-tag {
+  position: absolute;
+  bottom: 0;
+  border-radius: 999px;
+  padding: 2px 6px;
+  color: #07111f;
+  background: #fff7dc;
+  font-size: 0.58rem;
+  font-weight: 950;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+}
+
+.bat {
+  position: absolute;
+  right: -1px;
+  top: 10px;
+  width: 7px;
+  height: 44px;
+  border-radius: 999px;
+  background: linear-gradient(#f7d28b, #9a5b25);
+  transform: rotate(-35deg);
+  transform-origin: bottom center;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.22);
+}
+
+.fielder.active,
+.batter.active {
+  filter: drop-shadow(0 0 12px rgba(255, 203, 71, 0.9));
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.fielder.catching .player-body {
+  animation: glovePop 360ms ease;
+}
+
+.fielder.throwing .player-body,
+.fielder[data-position="P"].throwing .player-body {
+  animation: playerThrow 520ms ease;
+}
+
+.batter.swinging .bat {
+  animation: batSwing 520ms ease;
+}
+
+.batter.taking .player-body {
+  animation: takePitch 500ms ease;
 }
 
 .runner {
@@ -504,6 +597,10 @@ select option {
 .ball.hit-homerun,
 .ball.hit-insidepark { animation: flyHomer 1.15s ease-in-out; }
 .ball.hit-walk { animation: nudgeWalk 0.8s ease-in-out; }
+
+.ball.live-ball {
+  transition: left 300ms ease-in-out, top 300ms ease-in-out, transform 300ms ease-in-out;
+}
 
 .dugout {
   position: absolute;
@@ -570,6 +667,30 @@ select option {
   padding: 12px;
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 244, 214, 0.86);
+}
+
+@keyframes glovePop {
+  0% { transform: translateY(0) scale(1); }
+  45% { transform: translateY(-9px) scale(1.14); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes playerThrow {
+  0% { transform: rotate(0deg) translateX(0); }
+  45% { transform: rotate(-12deg) translateX(-3px); }
+  100% { transform: rotate(10deg) translateX(4px); }
+}
+
+@keyframes batSwing {
+  0% { transform: rotate(-35deg); }
+  45% { transform: rotate(82deg); }
+  100% { transform: rotate(18deg); }
+}
+
+@keyframes takePitch {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(-7px); }
+  100% { transform: translateX(0); }
 }
 
 @keyframes flyPopout {
@@ -654,5 +775,21 @@ select option {
 
   .dugout {
     display: none;
+  }
+
+  .fielder,
+  .batter {
+    width: 38px;
+    height: 48px;
+  }
+
+  .player-body {
+    width: 32px;
+    height: 32px;
+    font-size: 0.62rem;
+  }
+
+  .position-tag {
+    font-size: 0.52rem;
   }
 }
