@@ -137,7 +137,11 @@ const state = {
   lineupIndex: { away: 0, home: 0 },
   score: null,
   gameOver: false,
-  playNumber: 0
+  playNumber: 0,
+  animating: false,
+  activeBatter: null,
+  activeBattingTeam: null,
+  activeDefenseTeam: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -145,7 +149,32 @@ const teamGrid = $("#teamGrid");
 const awaySelect = $("#awayTeam");
 const homeSelect = $("#homeTeam");
 const runnerLayer = $("#runnerLayer");
+const fielderLayer = $("#fielderLayer");
+const batterBox = $("#batterBox");
 const ball = $("#ball");
+
+const positionCoordinates = {
+  P: { left: 50, top: 62, role: "Pitcher" },
+  C: { left: 50, top: 88, role: "Catcher" },
+  "1B": { left: 73, top: 58, role: "First base" },
+  "2B": { left: 60, top: 47, role: "Second base" },
+  "3B": { left: 27, top: 58, role: "Third base" },
+  SS: { left: 40, top: 49, role: "Shortstop" },
+  LF: { left: 22, top: 27, role: "Left field" },
+  CF: { left: 50, top: 20, role: "Center field" },
+  RF: { left: 78, top: 27, role: "Right field" }
+};
+
+const playAnimations = {
+  groundout: { fielder: "SS", catchAt: { left: 42, top: 54 }, throwTo: "first", action: "scoops and throws to first" },
+  popout: { fielder: "2B", catchAt: { left: 53, top: 39 }, throwTo: "P", action: "settles under it and catches it" },
+  single: { fielder: "RF", catchAt: { left: 78, top: 44 }, throwTo: "second", action: "fields it and fires it back in" },
+  double: { fielder: "LF", catchAt: { left: 20, top: 43 }, throwTo: "second", action: "cuts it off and throws to second" },
+  triple: { fielder: "LF", catchAt: { left: 13, top: 31 }, throwTo: "third", action: "chases it down and throws to third" },
+  homerun: { fielder: "CF", catchAt: { left: 50, top: -6 }, throwTo: null, action: "leaps at the wall as it sails out" },
+  insidepark: { fielder: "CF", catchAt: { left: 12, top: 31 }, throwTo: "home", action: "retrieves it and throws home" },
+  walk: { fielder: "C", catchAt: { left: 50, top: 88 }, throwTo: "P", action: "catches ball four and tosses it back" }
+};
 
 function init() {
   renderTeamPicker();
@@ -205,6 +234,10 @@ function startGame() {
   state.score = createScorebook();
   state.gameOver = false;
   state.playNumber = 0;
+  state.animating = false;
+  state.activeBatter = null;
+  state.activeBattingTeam = null;
+  state.activeDefenseTeam = null;
   $("#playLog").innerHTML = "";
   $("#lastCard").textContent = "Flip to begin";
   $("#cardDescription").textContent = "The batter is waiting for the pitch.";
@@ -229,16 +262,21 @@ function shuffleDeck() {
 }
 
 function flipCard() {
-  if (state.gameOver) return;
+  if (state.gameOver || state.animating) return;
   if (state.deck.length === 0) state.deck = shuffleDeck();
 
   const card = state.deck.pop();
   const teamKey = state.half;
   const batter = getCurrentBatter();
+  const battingTeam = state.teams[teamKey];
+  const defenseTeam = getDefenseTeam();
+  state.animating = true;
+  state.activeBatter = batter;
+  state.activeBattingTeam = battingTeam;
+  state.activeDefenseTeam = defenseTeam;
+  $("#flipCard").disabled = true;
   state.lineupIndex[teamKey] = (state.lineupIndex[teamKey] + 1) % 9;
   ensureInningSlot(teamKey);
-
-  animateBall(card.type);
 
   let runsScored = 0;
   if (card.outs) {
@@ -262,10 +300,13 @@ function flipCard() {
   state.playNumber += 1;
   $("#lastCard").textContent = card.label;
   $("#cardDescription").textContent = card.description;
-  logPlay(`${inningText()} — ${batter.name} (${batter.position}) flips ${card.label}${runsScored ? `, scoring ${runsScored}` : ""}.`);
+  const animation = playAnimations[card.type];
+  const defender = findPlayerByPosition(defenseTeam, animation.fielder);
+  logPlay(`${inningText()} — ${batter.name} (${batter.position}) swings at the pitch: ${card.label}. ${defender.name} (${defender.position}) ${animation.action}${runsScored ? `, and ${runsScored} run${runsScored > 1 ? "s" : ""} score` : ""}.`);
 
   if (state.outs >= 3) changeSides();
   renderAll();
+  animatePlay(card.type, batter, battingTeam, defenseTeam);
 }
 
 function getCurrentBatter() {
@@ -357,6 +398,8 @@ function finishGame() {
 function renderAll() {
   renderScoreboard();
   renderGameInfo();
+  renderFielders();
+  renderBatter();
   renderRunners();
   renderDugouts();
 }
@@ -384,6 +427,47 @@ function renderGameInfo() {
   $("#baseState").textContent = ["first", "second", "third"].filter((base) => state.bases[base]).map(labelBase).join(" / ") || "Empty";
 }
 
+function getDefenseTeamKey() {
+  return state.half === "away" ? "home" : "away";
+}
+
+function getDefenseTeam() {
+  return state.teams[getDefenseTeamKey()];
+}
+
+function findPlayerByPosition(team, position) {
+  return team.lineup.find((player) => player.position === position) || team.lineup[0];
+}
+
+function getPlayerInitials(player) {
+  return player.name.split(" ").map((part) => part[0]).join("");
+}
+
+function renderFielders() {
+  const defenseTeam = state.activeDefenseTeam || getDefenseTeam();
+  fielderLayer.innerHTML = defenseTeam.lineup.map((player) => {
+    const coords = positionCoordinates[player.position];
+    return `
+      <div class="fielder" data-position="${player.position}" style="--player-color: ${defenseTeam.primary}; left: ${coords.left}%; top: ${coords.top}%;" title="${player.name} • ${coords.role}">
+        <span class="player-body">${getPlayerInitials(player)}</span>
+        <span class="position-tag">${player.position}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderBatter() {
+  const batter = state.activeBatter || getCurrentBatter();
+  const battingTeam = state.activeBattingTeam || state.teams[state.half];
+  batterBox.innerHTML = `
+    <div class="batter" style="--player-color: ${battingTeam.primary};" title="${batter.name} at bat">
+      <span class="bat" aria-hidden="true"></span>
+      <span class="player-body">${getPlayerInitials(batter)}</span>
+      <span class="position-tag">BAT</span>
+    </div>
+  `;
+}
+
 function renderRunners() {
   const activeRunnerIds = new Set();
 
@@ -404,7 +488,7 @@ function renderRunners() {
 
     el.style.setProperty("--runner-color", state.teams[state.half].primary);
     el.title = `${runner.name} on ${labelBase(base)}`;
-    el.textContent = runner.name.split(" ").map((part) => part[0]).join("");
+    el.textContent = getPlayerInitials(runner);
     requestAnimationFrame(() => {
       el.style.left = `${coords.left}%`;
       el.style.top = `${coords.top}%`;
@@ -421,7 +505,7 @@ function showScoredRunner(runner) {
   el.className = "runner scored";
   el.style.left = `${baseCoordinates.home.left}%`;
   el.style.top = `${baseCoordinates.home.top}%`;
-  el.textContent = runner.name.split(" ").map((part) => part[0]).join("");
+  el.textContent = getPlayerInitials(runner);
   runnerLayer.append(el);
   setTimeout(() => el.remove(), 900);
 }
@@ -434,12 +518,63 @@ function renderDugouts() {
   });
 }
 
-function animateBall(type) {
-  ball.className = `ball hit-${type}`;
+function animatePlay(type, batter, battingTeam, defenseTeam) {
+  const animation = playAnimations[type] || playAnimations.single;
+  const defender = findPlayerByPosition(defenseTeam, animation.fielder);
+  const defenderNode = fielderLayer.querySelector(`[data-position="${defender.position}"]`);
+  const pitcher = fielderLayer.querySelector(`[data-position="P"]`);
+  const batterNode = batterBox.querySelector(".batter");
+  const pitchStart = positionCoordinates.P;
+  const plate = baseCoordinates.home;
+
+  [pitcher, batterNode, defenderNode].forEach((node) => node?.classList.remove("active", "catching", "throwing", "swinging"));
+  pitcher?.classList.add("throwing");
+  batterNode?.classList.add("active");
+
+  ball.className = "ball live-ball";
   ball.classList.remove("hidden");
-  ball.style.left = `${baseCoordinates.home.left}%`;
-  ball.style.top = `${baseCoordinates.home.top}%`;
-  setTimeout(() => ball.classList.add("hidden"), 1200);
+  moveBall(pitchStart, 0);
+
+  setTimeout(() => moveBall(plate, 260), 30);
+  setTimeout(() => {
+    batterNode?.classList.add(type === "walk" ? "taking" : "swinging");
+    pitcher?.classList.remove("throwing");
+  }, 280);
+
+  setTimeout(() => {
+    defenderNode?.classList.add("active");
+    moveBall(animation.catchAt, type === "groundout" ? 620 : 720);
+  }, 360);
+
+  setTimeout(() => {
+    defenderNode?.classList.add("catching");
+    if (!animation.throwTo) return;
+    defenderNode?.classList.add("throwing");
+    moveBall(resolveThrowTarget(animation.throwTo), 520);
+  }, 1180);
+
+  setTimeout(() => {
+    ball.classList.add("hidden");
+    [pitcher, batterNode, defenderNode].forEach((node) => node?.classList.remove("active", "catching", "throwing", "swinging", "taking"));
+    state.animating = false;
+    state.activeBatter = null;
+    state.activeBattingTeam = null;
+    state.activeDefenseTeam = null;
+    if (!state.gameOver) $("#flipCard").disabled = false;
+    renderAll();
+  }, 1850);
+}
+
+function resolveThrowTarget(target) {
+  if (baseCoordinates[target]) return baseCoordinates[target];
+  if (positionCoordinates[target]) return positionCoordinates[target];
+  return baseCoordinates.home;
+}
+
+function moveBall(coords, duration) {
+  ball.style.transition = duration ? `left ${duration}ms ease-in-out, top ${duration}ms ease-in-out, transform ${duration}ms ease-in-out` : "none";
+  ball.style.left = `${coords.left}%`;
+  ball.style.top = `${coords.top}%`;
 }
 
 function teamLogoMarkup(team) {
